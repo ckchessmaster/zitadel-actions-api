@@ -1,0 +1,53 @@
+{
+  "description": "ZITADEL Actions V2 configuration examples for zitadel-actions-api",
+  "step_1_create_target": {
+    "method": "POST",
+    "url": "https://<your-zitadel-domain>/v2/actions/targets",
+    "headers": {
+      "Authorization": "Bearer <SERVICE_USER_TOKEN>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "name": "flatten-roles-target",
+      "endpoint": "http://zitadel-actions-api.default.svc.cluster.local/v1/actions/flatten-roles",
+      "timeout": "5s",
+      "payloadType": "PAYLOAD_TYPE_JSON",
+      "restCall": {
+        "interruptOnError": false
+      }
+    },
+    "note": "Save the returned 'id' and 'signingKey'. If using signature verification, set ZITADEL_SIGNING_KEY in Kubernetes secret."
+  },
+  "step_2_create_execution_preaccesstoken": {
+    "method": "PUT",
+    "url": "https://<your-zitadel-domain>/v2/actions/executions",
+    "headers": {
+      "Authorization": "Bearer <SERVICE_USER_TOKEN>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "condition": {
+        "function": {
+          "name": "preaccesstoken"
+        }
+      },
+      "targets": ["<TARGET_ID_FROM_STEP_1>"]
+    }
+  },
+  "step_3_create_execution_preuserinfo": {
+    "method": "PUT",
+    "url": "https://<your-zitadel-domain>/v2/actions/executions",
+    "headers": {
+      "Authorization": "Bearer <SERVICE_USER_TOKEN>",
+      "Content-Type": "application/json"
+    },
+    "body": {
+      "condition": {
+        "function": {
+          "name": "preuserinfo"
+        }
+      },
+      "targets": ["<TARGET_ID_FROM_STEP_1>"]
+    }
+  }
+}

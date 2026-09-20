@@ -1,0 +1,10 @@
+.git
+.github
+deploy
+docs
+examples
+.gitignore
+README.md
+Makefile
+*.md
+*.log
