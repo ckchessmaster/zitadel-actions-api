@@ -14,24 +14,24 @@ import (
 	"github.com/ckchessmaster/zitadel-actions-api/internal/service"
 )
 
-// FlattenRolesHandler handles role-flattening webhook requests.
-type FlattenRolesHandler struct {
-	flattener service.Flattener
-	cfg       *config.Config
-	logger    *slog.Logger
+// ActionsHandler is the single unified HTTP handler for ZITADEL Actions webhooks.
+type ActionsHandler struct {
+	dispatcher *service.Dispatcher
+	cfg        *config.Config
+	logger     *slog.Logger
 }
 
-// NewFlattenRolesHandler creates a new FlattenRolesHandler.
-func NewFlattenRolesHandler(flattener service.Flattener, cfg *config.Config, logger *slog.Logger) *FlattenRolesHandler {
-	return &FlattenRolesHandler{
-		flattener: flattener,
-		cfg:       cfg,
-		logger:    logger,
+// NewActionsHandler creates a new ActionsHandler.
+func NewActionsHandler(dispatcher *service.Dispatcher, cfg *config.Config, logger *slog.Logger) *ActionsHandler {
+	return &ActionsHandler{
+		dispatcher: dispatcher,
+		cfg:        cfg,
+		logger:     logger,
 	}
 }
 
-// ServeHTTP implements http.Handler.
-func (h *FlattenRolesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+// ServeHTTP handles POST requests to the unified /actions endpoint.
+func (h *ActionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		w.Header().Set("Allow", http.MethodPost)
 		w.WriteHeader(http.StatusMethodNotAllowed)
@@ -71,21 +71,25 @@ func (h *FlattenRolesHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	trimmedBody := bytes.TrimSpace(bodyBytes)
-	if len(trimmedBody) > 0 {
-		if err := json.Unmarshal(trimmedBody, &req); err != nil {
+	trimmed := bytes.TrimSpace(bodyBytes)
+	if len(trimmed) > 0 {
+		if err := json.Unmarshal(trimmed, &req); err != nil {
 			h.logger.Warn("invalid JSON request body", slog.Any("error", err))
 			writeJSONError(w, http.StatusBadRequest, "invalid json request body")
 			return
 		}
 	}
 
-	res := h.flattener.FlattenRoles(&req, opts)
+	res, err := h.dispatcher.Dispatch(r.Context(), &req, opts)
+	if err != nil {
+		h.logger.Error("action dispatch failed", slog.Any("error", err))
+		writeJSONError(w, http.StatusInternalServerError, "internal server error")
+		return
+	}
 
-	h.logger.Debug("flattened roles",
-		slog.String("claim_name", opts.ClaimName),
-		slog.Int("group_count", len(res.Groups)),
-		slog.Any("groups", res.Groups),
+	h.logger.Debug("processed action",
+		slog.String("function", req.Function),
+		slog.Int("append_claims_count", len(res.AppendClaims)),
 	)
 
 	w.Header().Set("Content-Type", "application/json")

@@ -22,7 +22,7 @@ func TestSignatureValidator_BypassWhenNoKey(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBufferString(`{"test":"data"}`))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString(`{"test":"data"}`))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -43,7 +43,7 @@ func TestSignatureValidator_MissingSignature(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBufferString(`{"test":"data"}`))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString(`{"test":"data"}`))
 	rec := httptest.NewRecorder()
 
 	handler.ServeHTTP(rec, req)
@@ -73,7 +73,7 @@ func TestSignatureValidator_ValidSignature(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBuffer(payload))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBuffer(payload))
 	req.Header.Set("Zitadel-Signature", sig)
 	rec := httptest.NewRecorder()
 
@@ -99,7 +99,7 @@ func TestSignatureValidator_InvalidSignature(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	}))
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBuffer(payload))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBuffer(payload))
 	req.Header.Set("Zitadel-Signature", sig)
 	rec := httptest.NewRecorder()
 

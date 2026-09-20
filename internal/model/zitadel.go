@@ -4,6 +4,7 @@ package model
 // It is designed to handle both ZITADEL Actions V2 target payloads
 // and Actions V1 / custom script payloads.
 type ActionRequest struct {
+	Function   string         `json:"function,omitempty"`
 	InstanceID string         `json:"instanceID,omitempty"`
 	OrgID      string         `json:"orgID,omitempty"`
 	UserID     string         `json:"userID,omitempty"`
@@ -31,12 +32,14 @@ type ClaimItem struct {
 // ActionResponse represents the response sent back to ZITADEL or the caller.
 // It includes:
 // - AppendClaims: The standard ZITADEL Actions V2 field used to inject custom claims.
+// - AppendLogClaims: Optional log messages to append to ZITADEL execution logs.
 // - Groups: Convenience flat array for direct consumers.
 // - Claims: Key-value map of all appended claims.
 type ActionResponse struct {
-	AppendClaims []ClaimItem    `json:"append_claims"`
-	Groups       []string       `json:"groups"`
-	Claims       map[string]any `json:"claims"`
+	AppendClaims    []ClaimItem    `json:"append_claims"`
+	AppendLogClaims []string       `json:"append_log_claims,omitempty"`
+	Groups          []string       `json:"groups,omitempty"`
+	Claims          map[string]any `json:"claims,omitempty"`
 }
 
 // FlattenOptions defines options for customizing role extraction and formatting.

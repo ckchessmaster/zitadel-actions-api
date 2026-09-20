@@ -8,8 +8,8 @@
       "Content-Type": "application/json"
     },
     "body": {
-      "name": "flatten-roles-target",
-      "endpoint": "http://zitadel-actions-api.default.svc.cluster.local/v1/actions/flatten-roles",
+      "name": "zitadel-actions-target",
+      "endpoint": "http://zitadel-actions-api.zitadel.svc.cluster.local/actions",
       "timeout": "5s",
       "payloadType": "PAYLOAD_TYPE_JSON",
       "restCall": {

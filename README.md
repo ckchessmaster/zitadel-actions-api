@@ -20,9 +20,12 @@ The initial goal of this service is to **flatten ZITADEL project roles into a cl
 
 ## API Endpoints
 
-### 1. `POST /v1/actions/flatten-roles`
+### 1. `POST /actions` *(Primary Unified Target Endpoint)*
 
-Extracts user roles, deduplicates them, and returns an `append_claims` structure for ZITADEL as well as flat convenience fields.
+Unified webhook endpoint for ZITADEL Actions V2 Targets.
+You only need to configure **one Target** in ZITADEL pointing to `/actions`. The internal dispatcher automatically coordinates all applicable action processors (e.g. role flattening, claims enrichment, user validation) based on the execution trigger and merges the results.
+
+*(Aliases: `POST /v1/actions`, `POST /v1/actions/flatten-roles`, `POST /flatten-roles`)*
 
 #### Query Parameters (Optional Overrides):
 | Parameter | Default | Description | Example |

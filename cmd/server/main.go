@@ -48,13 +48,14 @@ func main() {
 		slog.Bool("signature_verification", cfg.ZitadelSigningKey != ""),
 	)
 
-	// Initialize services and handlers
+	// Initialize dispatcher and action processors
 	flattenerService := service.NewRoleFlattener()
-	flattenHandler := handler.NewFlattenRolesHandler(flattenerService, cfg, logger)
+	actionDispatcher := service.NewDispatcher(flattenerService)
+	unifiedActionHandler := handler.NewActionsHandler(actionDispatcher, cfg, logger)
 
 	// Actions router with signature validation
 	actionsMux := http.NewServeMux()
-	actionsMux.Handle("/v1/actions/flatten-roles", flattenHandler)
+	actionsMux.Handle("/actions", unifiedActionHandler)
 
 	// Wrap actions with signature validation middleware
 	validatedActionsHandler := middleware.SignatureValidator(cfg.ZitadelSigningKey, logger)(actionsMux)
@@ -63,7 +64,7 @@ func main() {
 	rootMux := http.NewServeMux()
 	rootMux.HandleFunc("GET /healthz", handler.Healthz())
 	rootMux.HandleFunc("GET /readyz", handler.Readyz())
-	rootMux.Handle("/v1/actions/", validatedActionsHandler)
+	rootMux.Handle("/actions", validatedActionsHandler)
 
 	// Apply global middleware: recoverer, then logger
 	rootHandler := middleware.Recoverer(logger)(middleware.Logger(logger)(rootMux))

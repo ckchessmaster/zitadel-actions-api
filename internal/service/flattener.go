@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"sort"
 	"strings"
 
@@ -9,15 +10,45 @@ import (
 
 // Flattener defines the interface for role flattening business logic.
 type Flattener interface {
+	ActionProcessor
 	FlattenRoles(req *model.ActionRequest, opts model.FlattenOptions) *model.ActionResponse
 }
 
-// RoleFlattener implements Flattener.
+// RoleFlattener implements Flattener and ActionProcessor.
 type RoleFlattener struct{}
 
 // NewRoleFlattener creates a new RoleFlattener service.
 func NewRoleFlattener() *RoleFlattener {
 	return &RoleFlattener{}
+}
+
+// Name returns the identifier of this action processor.
+func (f *RoleFlattener) Name() string {
+	return "role_flattener"
+}
+
+// ShouldProcess determines if this request should have roles extracted and flattened.
+func (f *RoleFlattener) ShouldProcess(req *model.ActionRequest) bool {
+	if req == nil {
+		return true
+	}
+	fn := strings.ToLower(strings.TrimSpace(req.Function))
+	if fn == "preaccesstoken" || fn == "preuserinfo" {
+		return true
+	}
+	if len(req.UserGrants) > 0 || len(req.Grants) > 0 || len(req.Claims) > 0 {
+		return true
+	}
+	// Default to true for complement token webhook calls
+	if req.FullMethod == "" {
+		return true
+	}
+	return false
+}
+
+// Process implements ActionProcessor.
+func (f *RoleFlattener) Process(ctx context.Context, req *model.ActionRequest, opts model.FlattenOptions) (*model.ActionResponse, error) {
+	return f.FlattenRoles(req, opts), nil
 }
 
 // FlattenRoles extracts roles from the request, filters, normalizes, deduplicates,

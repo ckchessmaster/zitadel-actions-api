@@ -15,23 +15,24 @@ import (
 	"github.com/ckchessmaster/zitadel-actions-api/internal/service"
 )
 
-func TestFlattenRolesHandler_ValidPayload(t *testing.T) {
+func TestActionsHandler_PreAccessToken(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{
 		ClaimName:      "groups",
 		RoleFormat:     "bare",
 		LowercaseRoles: true,
 	}
-	flattener := service.NewRoleFlattener()
-	h := NewFlattenRolesHandler(flattener, cfg, logger)
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener())
+	h := NewActionsHandler(dispatcher, cfg, logger)
 
 	payload := `{
+		"function": "preaccesstoken",
 		"user_grants": [
-			{"projectId": "frigate", "roles": ["admin", "viewer"]}
+			{"projectId": "frigate", "roles": ["ADMIN", "viewer"]}
 		]
 	}`
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBufferString(payload))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString(payload))
 	rec := httptest.NewRecorder()
 
 	h.ServeHTTP(rec, req)
@@ -58,24 +59,24 @@ func TestFlattenRolesHandler_ValidPayload(t *testing.T) {
 	}
 }
 
-func TestFlattenRolesHandler_QueryParamsOverride(t *testing.T) {
+func TestActionsHandler_QueryParamsOverride(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{
 		ClaimName:      "groups",
 		RoleFormat:     "bare",
 		LowercaseRoles: true,
 	}
-	flattener := service.NewRoleFlattener()
-	h := NewFlattenRolesHandler(flattener, cfg, logger)
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener())
+	h := NewActionsHandler(dispatcher, cfg, logger)
 
 	payload := `{
+		"function": "preuserinfo",
 		"user_grants": [
-			{"projectId": "frigate", "roles": ["ADMIN"]}
+			{"projectId": "frigate", "roles": ["admin"]}
 		]
 	}`
 
-	url := "/v1/actions/flatten-roles?claim_name=roles&format=prefixed"
-	req := httptest.NewRequest(http.MethodPost, url, bytes.NewBufferString(payload))
+	req := httptest.NewRequest(http.MethodPost, "/actions?claim_name=roles&format=prefixed", bytes.NewBufferString(payload))
 	rec := httptest.NewRecorder()
 
 	h.ServeHTTP(rec, req)
@@ -98,17 +99,15 @@ func TestFlattenRolesHandler_QueryParamsOverride(t *testing.T) {
 	}
 }
 
-func TestFlattenRolesHandler_EmptyBody(t *testing.T) {
+func TestActionsHandler_EmptyBody(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{
-		ClaimName:      "groups",
-		RoleFormat:     "bare",
-		LowercaseRoles: true,
+		ClaimName: "groups",
 	}
-	flattener := service.NewRoleFlattener()
-	h := NewFlattenRolesHandler(flattener, cfg, logger)
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener())
+	h := NewActionsHandler(dispatcher, cfg, logger)
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBufferString(""))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString(""))
 	rec := httptest.NewRecorder()
 
 	h.ServeHTTP(rec, req)
@@ -127,15 +126,15 @@ func TestFlattenRolesHandler_EmptyBody(t *testing.T) {
 	}
 }
 
-func TestFlattenRolesHandler_InvalidJSON(t *testing.T) {
+func TestActionsHandler_InvalidJSON(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{
 		ClaimName: "groups",
 	}
-	flattener := service.NewRoleFlattener()
-	h := NewFlattenRolesHandler(flattener, cfg, logger)
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener())
+	h := NewActionsHandler(dispatcher, cfg, logger)
 
-	req := httptest.NewRequest(http.MethodPost, "/v1/actions/flatten-roles", bytes.NewBufferString("{invalid json"))
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString("{invalid json"))
 	rec := httptest.NewRecorder()
 
 	h.ServeHTTP(rec, req)
@@ -145,15 +144,15 @@ func TestFlattenRolesHandler_InvalidJSON(t *testing.T) {
 	}
 }
 
-func TestFlattenRolesHandler_MethodNotAllowed(t *testing.T) {
+func TestActionsHandler_MethodNotAllowed(t *testing.T) {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	cfg := &config.Config{
 		ClaimName: "groups",
 	}
-	flattener := service.NewRoleFlattener()
-	h := NewFlattenRolesHandler(flattener, cfg, logger)
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener())
+	h := NewActionsHandler(dispatcher, cfg, logger)
 
-	req := httptest.NewRequest(http.MethodGet, "/v1/actions/flatten-roles", nil)
+	req := httptest.NewRequest(http.MethodGet, "/actions", nil)
 	rec := httptest.NewRecorder()
 
 	h.ServeHTTP(rec, req)

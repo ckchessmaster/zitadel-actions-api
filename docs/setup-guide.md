@@ -34,15 +34,15 @@ kubectl get svc zitadel-actions-api
 ```
 
 The service is now reachable within your cluster at:
-`http://zitadel-actions-api.default.svc.cluster.local/v1/actions/flatten-roles`
+`http://zitadel-actions-api.zitadel.svc.cluster.local/actions`
 
 ---
 
 ## 2. Configuring ZITADEL Actions V2
 
-ZITADEL Actions V2 uses **Targets** and **Executions** to call external webhooks.
+With `zitadel-actions-api`, you only need to configure **one single Target** in ZITADEL. All executions (`preaccesstoken`, `preuserinfo`, user creation hooks, etc.) point to this same target. The internal Action Dispatcher automatically coordinates all registered processors.
 
-### Step 2.1: Create Target
+### Step 2.1: Create the Single Target
 
 Make a `POST` request to ZITADEL API using a service user token:
 
@@ -51,8 +51,8 @@ curl -X POST "https://<your-zitadel-domain>/v2/actions/targets" \
   -H "Authorization: Bearer <SERVICE_USER_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "flatten-roles-target",
-    "endpoint": "http://zitadel-actions-api.default.svc.cluster.local/v1/actions/flatten-roles",
+    "name": "zitadel-actions-target",
+    "endpoint": "http://zitadel-actions-api.zitadel.svc.cluster.local/actions",
     "timeout": "5s",
     "payloadType": "PAYLOAD_TYPE_JSON",
     "restCall": {

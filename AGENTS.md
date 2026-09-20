@@ -55,19 +55,22 @@ zitadel-actions-api/
 
 ---
 
-## 3. Key Design Rules & Patterns
+### 3.1 Single Target Architecture (`/actions`)
+- ZITADEL targets should point to a single unified endpoint: `http://zitadel-actions-api.zitadel.svc.cluster.local/actions`.
+- Multiple ZITADEL Executions (`preaccesstoken`, `preuserinfo`, user creation hooks, etc.) can bind to this same target.
+- The service uses an **Action Dispatcher** (`internal/service/dispatcher.go`) which inspects the request context and coordinates all applicable `ActionProcessor`s.
 
-### 3.1 ZITADEL Actions V2 Compatibility
+### 3.2 ZITADEL Actions V2 Compatibility
 - ZITADEL expects webhook responses to return `append_claims: [{ key: "groups", value: ["..."] }]`.
 - Always maintain dual-compatibility: return `append_claims` **and** flat convenience keys (`groups`, `claims`) so direct API callers, testing utilities, and legacy V1 JavaScript scripts work out of the box.
 - Check both `Zitadel-Signature` and `X-Zitadel-Signature` headers for HMAC verification when `ZITADEL_SIGNING_KEY` is configured.
 
-### 3.2 Adding New Action Handlers
-To add a new ZITADEL action handler:
-1. Define any new request/response models in `internal/model/`.
-2. Implement core business logic in an isolated service inside `internal/service/` with 100% test coverage.
-3. Add an HTTP handler in `internal/handler/`.
-4. Wire the handler into `actionsMux` in `cmd/server/main.go` under `/v1/actions/<action-name>`.
+### 3.3 Adding New Action Handlers (Processors)
+To add a new capability (e.g. metadata enrichment, user validation, external sync):
+1. Implement the `ActionProcessor` interface (`Name()`, `ShouldProcess(req)`, `Process(ctx, req, opts)`) in `internal/service/`.
+2. Register the new processor with `dispatcher.Register(...)` in `cmd/server/main.go`.
+3. The unified `/actions` endpoint will automatically execute it and merge all `append_claims` into the ZITADEL response.
+4. Maintain 100% test coverage for any new processor.
 
 ### 3.3 Coding Standards
 - **Language**: Go 1.22+ (using standard library HTTP routing and `log/slog`).
