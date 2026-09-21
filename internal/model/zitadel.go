@@ -9,6 +9,14 @@ type ActionRequest struct {
 	UserGrants []UserGrant `json:"user_grants,omitempty"`
 	User       *UserInfo   `json:"user,omitempty"`
 	UserInfo   *UserClaims `json:"userinfo,omitempty"`
+	Org        *OrgInfo    `json:"org,omitempty"`
+}
+
+// OrgInfo represents the organization context provided in ZITADEL's payload.
+type OrgInfo struct {
+	ID            string `json:"id,omitempty"`
+	Name          string `json:"name,omitempty"`
+	PrimaryDomain string `json:"primary_domain,omitempty"`
 }
 
 // UserClaims represents the userinfo claims provided in ZITADEL's payload (e.g. sub).
@@ -19,6 +27,7 @@ type UserClaims struct {
 // UserInfo represents the user details provided in ZITADEL's payload.
 type UserInfo struct {
 	ID                 string `json:"id,omitempty"`
+	ResourceOwner      string `json:"resource_owner,omitempty"`
 	Username           string `json:"username,omitempty"`
 	PreferredLoginName string `json:"preferred_login_name,omitempty"`
 }

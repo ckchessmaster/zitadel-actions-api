@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -16,7 +17,7 @@ import (
 
 // GrantFetcher defines the interface for fetching user grants from an external identity provider.
 type GrantFetcher interface {
-	FetchUserGrants(ctx context.Context, userID string) ([]model.UserGrant, error)
+	FetchUserGrants(ctx context.Context, userID string, orgIDs ...string) ([]model.UserGrant, error)
 }
 
 // Client interacts with the ZITADEL Management API using a Personal Access Token (PAT).
@@ -34,8 +35,8 @@ func New(baseURL, apiToken string, httpClient *http.Client) *Client {
 		}
 	}
 	return &Client{
-		baseURL:    strings.TrimRight(baseURL, "/"),
-		apiToken:   strings.TrimSpace(apiToken),
+		baseURL:    strings.TrimRight(strings.Trim(strings.TrimSpace(baseURL), `"'`), "/"),
+		apiToken:   strings.Trim(strings.TrimSpace(apiToken), `"'`),
 		httpClient: httpClient,
 	}
 }
@@ -50,19 +51,22 @@ type grantQuery struct {
 
 type userIDQuery struct {
 	UserID string `json:"userId"`
+	Method string `json:"method,omitempty"`
 }
 
 type userGrantsSearchResponse struct {
 	Result []struct {
 		ProjectID                  string   `json:"projectId"`
 		Roles                      []string `json:"roles"`
+		RoleKeys                   []string `json:"roleKeys"`
 		UserGrantResourceOwner     string   `json:"userGrantResourceOwner,omitempty"`
 		UserGrantResourceOwnerName string   `json:"userGrantResourceOwnerName,omitempty"`
 	} `json:"result"`
 }
 
 // FetchUserGrants retrieves the list of user grants for the given user ID.
-func (c *Client) FetchUserGrants(ctx context.Context, userID string) ([]model.UserGrant, error) {
+// An optional orgID can be provided to scope the request via the x-zitadel-orgid header.
+func (c *Client) FetchUserGrants(ctx context.Context, userID string, orgIDs ...string) ([]model.UserGrant, error) {
 	trimmedID := strings.TrimSpace(userID)
 	if trimmedID == "" {
 		return nil, errors.New("userID cannot be empty")
@@ -73,6 +77,7 @@ func (c *Client) FetchUserGrants(ctx context.Context, userID string) ([]model.Us
 			{
 				UserIDQuery: &userIDQuery{
 					UserID: trimmedID,
+					Method: "TEXT_QUERY_METHOD_EQUALS",
 				},
 			},
 		},
@@ -95,6 +100,10 @@ func (c *Client) FetchUserGrants(ctx context.Context, userID string) ([]model.Us
 		httpReq.Header.Set("Authorization", "Bearer "+c.apiToken)
 	}
 
+	if len(orgIDs) > 0 && strings.TrimSpace(orgIDs[0]) != "" {
+		httpReq.Header.Set("x-zitadel-orgid", strings.TrimSpace(orgIDs[0]))
+	}
+
 	resp, err := c.httpClient.Do(httpReq)
 	if err != nil {
 		return nil, fmt.Errorf("zitadel api request failed: %w", err)
@@ -105,6 +114,11 @@ func (c *Client) FetchUserGrants(ctx context.Context, userID string) ([]model.Us
 	if err != nil {
 		return nil, fmt.Errorf("failed to read zitadel api response: %w", err)
 	}
+
+	slog.DebugContext(ctx, "zitadel api grants search response",
+		slog.Int("status", resp.StatusCode),
+		slog.String("response_body", string(respBytes)),
+	)
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("zitadel api returned status %d: %s", resp.StatusCode, string(respBytes))
@@ -117,9 +131,13 @@ func (c *Client) FetchUserGrants(ctx context.Context, userID string) ([]model.Us
 
 	grants := make([]model.UserGrant, 0, len(searchResp.Result))
 	for _, r := range searchResp.Result {
+		roles := r.Roles
+		if len(roles) == 0 {
+			roles = r.RoleKeys
+		}
 		grants = append(grants, model.UserGrant{
 			ProjectID:                  r.ProjectID,
-			Roles:                      r.Roles,
+			Roles:                      roles,
 			UserGrantResourceOwner:     r.UserGrantResourceOwner,
 			UserGrantResourceOwnerName: r.UserGrantResourceOwnerName,
 		})

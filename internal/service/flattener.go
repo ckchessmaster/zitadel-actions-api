@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 	"sort"
 	"strings"
 
@@ -42,10 +43,13 @@ func (f *RoleFlattener) ShouldProcess(req *model.ActionRequest) bool {
 		return true
 	}
 	fn := strings.ToLower(strings.TrimSpace(req.Function))
-	if fn == "preaccesstoken" || fn == "preuserinfo" {
+	if strings.Contains(fn, "preaccesstoken") || strings.Contains(fn, "preuserinfo") {
 		return true
 	}
 	if len(req.UserGrants) > 0 {
+		return true
+	}
+	if req.UserID != "" || req.User != nil || req.UserInfo != nil {
 		return true
 	}
 	// Default to true for complement token webhook calls
@@ -82,9 +86,35 @@ func (f *RoleFlattener) FlattenRolesWithContext(ctx context.Context, req *model.
 			if userID == "" && req.UserInfo != nil {
 				userID = req.UserInfo.Sub
 			}
+
+			orgID := req.OrgID
+			if orgID == "" && req.Org != nil {
+				orgID = req.Org.ID
+			}
+			if orgID == "" && req.User != nil {
+				orgID = req.User.ResourceOwner
+			}
+
 			if userID != "" {
-				if grants, err := f.fetcher.FetchUserGrants(ctx, userID); err == nil && len(grants) > 0 {
-					req.UserGrants = grants
+				slog.InfoContext(ctx, "fetching user grants from ZITADEL API",
+					slog.String("user_id", userID),
+					slog.String("org_id", orgID),
+				)
+				grants, err := f.fetcher.FetchUserGrants(ctx, userID, orgID)
+				if err != nil {
+					slog.ErrorContext(ctx, "failed to fetch user grants from ZITADEL API",
+						slog.String("user_id", userID),
+						slog.String("org_id", orgID),
+						slog.Any("error", err),
+					)
+				} else {
+					slog.InfoContext(ctx, "successfully fetched user grants from ZITADEL API",
+						slog.String("user_id", userID),
+						slog.Int("grants_count", len(grants)),
+					)
+					if len(grants) > 0 {
+						req.UserGrants = grants
+					}
 				}
 			}
 		}

@@ -150,13 +150,102 @@ func TestRoleFlattener_FlattenRoles(t *testing.T) {
 
 type mockGrantFetcher struct {
 	calledUserID string
+	calledOrgID  string
 	grants       []model.UserGrant
 	err          error
 }
 
-func (m *mockGrantFetcher) FetchUserGrants(ctx context.Context, userID string) ([]model.UserGrant, error) {
+func (m *mockGrantFetcher) FetchUserGrants(ctx context.Context, userID string, orgIDs ...string) ([]model.UserGrant, error) {
 	m.calledUserID = userID
+	if len(orgIDs) > 0 {
+		m.calledOrgID = orgIDs[0]
+	}
 	return m.grants, m.err
+}
+
+func TestRoleFlattener_ShouldProcess(t *testing.T) {
+	flattener := NewRoleFlattener()
+
+	tests := []struct {
+		name     string
+		req      *model.ActionRequest
+		expected bool
+	}{
+		{
+			name:     "nil request",
+			req:      nil,
+			expected: true,
+		},
+		{
+			name: "function/preuserinfo prefix",
+			req: &model.ActionRequest{
+				Function: "function/preuserinfo",
+			},
+			expected: true,
+		},
+		{
+			name: "function/preaccesstoken prefix",
+			req: &model.ActionRequest{
+				Function: "function/preaccesstoken",
+			},
+			expected: true,
+		},
+		{
+			name: "preuserinfo without prefix",
+			req: &model.ActionRequest{
+				Function: "preuserinfo",
+			},
+			expected: true,
+		},
+		{
+			name: "preaccesstoken without prefix",
+			req: &model.ActionRequest{
+				Function: "preaccesstoken",
+			},
+			expected: true,
+		},
+		{
+			name: "empty function",
+			req: &model.ActionRequest{
+				Function: "",
+			},
+			expected: true,
+		},
+		{
+			name: "with user grants",
+			req: &model.ActionRequest{
+				Function: "some_other_hook",
+				UserGrants: []model.UserGrant{
+					{ProjectID: "p1", Roles: []string{"admin"}},
+				},
+			},
+			expected: true,
+		},
+		{
+			name: "with user object",
+			req: &model.ActionRequest{
+				Function: "some_other_hook",
+				User:     &model.UserInfo{ID: "123"},
+			},
+			expected: true,
+		},
+		{
+			name: "unrelated function with no user or grants",
+			req: &model.ActionRequest{
+				Function: "some_other_hook",
+			},
+			expected: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := flattener.ShouldProcess(tt.req)
+			if got != tt.expected {
+				t.Errorf("ShouldProcess() = %v, want %v", got, tt.expected)
+			}
+		})
+	}
 }
 
 func TestRoleFlattener_FlattenRoles_WithFetcher(t *testing.T) {
@@ -171,12 +260,16 @@ func TestRoleFlattener_FlattenRoles_WithFetcher(t *testing.T) {
 
 	flattener := NewRoleFlattener(mockFetcher)
 
-	// Case 1: Empty UserGrants, user ID in req.User.ID (like preuserinfo)
+	// Case 1: Empty UserGrants, user ID in req.User.ID (like preuserinfo) with Org
 	req := &model.ActionRequest{
-		Function:   "preuserinfo",
+		Function:   "function/preuserinfo",
 		UserGrants: []model.UserGrant{},
 		User: &model.UserInfo{
-			ID: "user-391212",
+			ID:            "user-391212",
+			ResourceOwner: "org-391212",
+		},
+		Org: &model.OrgInfo{
+			ID: "org-391212",
 		},
 	}
 
@@ -191,6 +284,9 @@ func TestRoleFlattener_FlattenRoles_WithFetcher(t *testing.T) {
 	if mockFetcher.calledUserID != "user-391212" {
 		t.Errorf("calledUserID = %q, want user-391212", mockFetcher.calledUserID)
 	}
+	if mockFetcher.calledOrgID != "org-391212" {
+		t.Errorf("calledOrgID = %q, want org-391212", mockFetcher.calledOrgID)
+	}
 
 	expectedGroups := []string{"frigate-admin", "viewer"}
 	if !reflect.DeepEqual(res.Groups, expectedGroups) {
@@ -199,6 +295,7 @@ func TestRoleFlattener_FlattenRoles_WithFetcher(t *testing.T) {
 
 	// Case 2: UserGrants already populated - fetcher should NOT be called
 	mockFetcher.calledUserID = ""
+	mockFetcher.calledOrgID = ""
 	reqWithGrants := &model.ActionRequest{
 		UserGrants: []model.UserGrant{
 			{
@@ -221,8 +318,9 @@ func TestRoleFlattener_FlattenRoles_WithFetcher(t *testing.T) {
 
 	// Case 3: Empty UserGrants, user ID in req.UserInfo.Sub
 	mockFetcher.calledUserID = ""
+	mockFetcher.calledOrgID = ""
 	reqWithSub := &model.ActionRequest{
-		Function:   "preuserinfo",
+		Function:   "function/preuserinfo",
 		UserGrants: []model.UserGrant{},
 		UserInfo: &model.UserClaims{
 			Sub: "sub-999",

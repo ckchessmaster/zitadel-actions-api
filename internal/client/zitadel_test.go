@@ -13,6 +13,7 @@ import (
 
 func TestClient_FetchUserGrants_Success(t *testing.T) {
 	expectedUserID := "user-123"
+	expectedOrgID := "org-456"
 	expectedToken := "test-pat-token"
 
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -26,16 +27,27 @@ func TestClient_FetchUserGrants_Success(t *testing.T) {
 		if authHeader != "Bearer "+expectedToken {
 			t.Errorf("Authorization = %q, want Bearer %s", authHeader, expectedToken)
 		}
+		orgHeader := r.Header.Get("x-zitadel-orgid")
+		if orgHeader != expectedOrgID {
+			t.Errorf("x-zitadel-orgid = %q, want %s", orgHeader, expectedOrgID)
+		}
 
 		var reqBody userGrantsSearchRequest
 		if err := json.NewDecoder(r.Body).Decode(&reqBody); err != nil {
 			t.Fatalf("failed to decode request body: %v", err)
 		}
 
-		if len(reqBody.Queries) != 1 || reqBody.Queries[0].UserIDQuery == nil || reqBody.Queries[0].UserIDQuery.UserID != expectedUserID {
-			t.Errorf("unexpected query: %+v", reqBody.Queries)
+		if len(reqBody.Queries) != 1 || reqBody.Queries[0].UserIDQuery == nil {
+			t.Fatalf("unexpected query: %+v", reqBody.Queries)
+		}
+		if reqBody.Queries[0].UserIDQuery.UserID != expectedUserID {
+			t.Errorf("UserID = %q, want %s", reqBody.Queries[0].UserIDQuery.UserID, expectedUserID)
+		}
+		if reqBody.Queries[0].UserIDQuery.Method != "TEXT_QUERY_METHOD_EQUALS" {
+			t.Errorf("Method = %q, want TEXT_QUERY_METHOD_EQUALS", reqBody.Queries[0].UserIDQuery.Method)
 		}
 
+		// First result uses roles, second result uses roleKeys
 		resp := map[string]any{
 			"result": []map[string]any{
 				{
@@ -44,7 +56,7 @@ func TestClient_FetchUserGrants_Success(t *testing.T) {
 				},
 				{
 					"projectId": "proj-ha",
-					"roles":     []string{"user"},
+					"roleKeys":  []string{"user"},
 				},
 			},
 		}
@@ -56,7 +68,7 @@ func TestClient_FetchUserGrants_Success(t *testing.T) {
 	defer ts.Close()
 
 	c := New(ts.URL, expectedToken, ts.Client())
-	grants, err := c.FetchUserGrants(context.Background(), expectedUserID)
+	grants, err := c.FetchUserGrants(context.Background(), expectedUserID, expectedOrgID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -197,5 +198,82 @@ func TestActionsHandler_MultipleGrants(t *testing.T) {
 	expectedGroups := []string{"admin", "editor", "viewer"}
 	if !reflect.DeepEqual(resp.Groups, expectedGroups) {
 		t.Errorf("resp.Groups = %v, want %v", resp.Groups, expectedGroups)
+	}
+}
+
+type mockHandlerGrantFetcher struct {
+	calledUserID string
+	calledOrgID  string
+	grants       []model.UserGrant
+	err          error
+}
+
+func (m *mockHandlerGrantFetcher) FetchUserGrants(ctx context.Context, userID string, orgIDs ...string) ([]model.UserGrant, error) {
+	m.calledUserID = userID
+	if len(orgIDs) > 0 {
+		m.calledOrgID = orgIDs[0]
+	}
+	return m.grants, m.err
+}
+
+func TestActionsHandler_PreUserInfo_WithFetcher(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := &config.Config{
+		ClaimName:      "groups",
+		RoleFormat:     "bare",
+		LowercaseRoles: true,
+	}
+
+	mockFetcher := &mockHandlerGrantFetcher{
+		grants: []model.UserGrant{
+			{
+				ProjectID: "frigate",
+				Roles:     []string{"frigate-admin", "viewer"},
+			},
+		},
+	}
+
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener(mockFetcher))
+	h := NewActionsHandler(dispatcher, cfg, logger)
+
+	// Exact production payload structure from ZITADEL
+	payload := `{
+		"function": "function/preuserinfo",
+		"userinfo": {"sub": "391212881191896648"},
+		"user": {
+			"id": "391212881191896648",
+			"resource_owner": "391212829786506824",
+			"username": "cdkingdon"
+		},
+		"org": {
+			"id": "391212829786506824",
+			"name": "Kingdon"
+		}
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString(payload))
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var resp model.ActionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	expectedGroups := []string{"frigate-admin", "viewer"}
+	if !reflect.DeepEqual(resp.Groups, expectedGroups) {
+		t.Errorf("resp.Groups = %v, want %v", resp.Groups, expectedGroups)
+	}
+
+	if mockFetcher.calledUserID != "391212881191896648" {
+		t.Errorf("mockFetcher.calledUserID = %q, want 391212881191896648", mockFetcher.calledUserID)
+	}
+	if mockFetcher.calledOrgID != "391212829786506824" {
+		t.Errorf("mockFetcher.calledOrgID = %q, want 391212829786506824", mockFetcher.calledOrgID)
 	}
 }
