@@ -145,3 +145,32 @@ You can override defaults per request URL:
 - `?format=prefixed`: Generates `projectId:role` format (e.g. `frigate:admin`).
 - `?project_id=<id>`: Only includes roles belonging to the specified project.
 - `?lowercase=false`: Preserves uppercase casing of role names.
+
+---
+
+## 5. Troubleshooting
+
+### `Errors.Target.DeniedURL (COMMAND-NcJUKo)`
+**Cause**: ZITADEL has built-in SSRF protection. By default, ZITADEL's `HTTPClient.DenyList` blocks RFC1918 private IP ranges (`10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`, `127.0.0.0/8`, `localhost`). When you give ZITADEL an internal Kubernetes service DNS (e.g. `*.cluster.local`), it resolves to an internal ClusterIP and rejects the target.
+
+**Solution**:
+Adjust ZITADEL's `HTTPClient.DenyList` to permit in-cluster requests:
+
+1. **Via Environment Variable** (in your ZITADEL Deployment/StatefulSet):
+   ```yaml
+   env:
+     - name: ZITADEL_HTTPCLIENT_DENYLIST
+       value: "169.254.169.254/32,127.0.0.1/32,localhost"
+   ```
+   *(Or set `value: ""` to disable the denylist entirely in a trusted homelab).*
+
+2. **Via Helm `values.yaml`**:
+   ```yaml
+   config:
+     HTTPClient:
+       DenyList:
+         - "169.254.169.254/32"
+         - "127.0.0.1/32"
+         - "localhost"
+   ```
+Restart ZITADEL after applying this change, and target creation will succeed.

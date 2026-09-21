@@ -94,58 +94,15 @@ func TestRoleFlattener_FlattenRoles(t *testing.T) {
 			expected: []string{"frigate-admin"},
 		},
 		{
-			name: "ZITADEL legacy claims map with role keys",
+			name: "Empty user_grants returns empty groups",
 			req: &model.ActionRequest{
-				Claims: map[string]any{
-					"urn:zitadel:iam:org:project:roles": map[string]any{
-						"frigate_admin": map[string]any{"org1": "My Org"},
-						"viewer":        map[string]any{"org1": "My Org"},
-					},
-				},
+				Function:   "preaccesstoken",
+				UserGrants: []model.UserGrant{},
 			},
 			opts: model.FlattenOptions{
-				ClaimName:  "groups",
-				RoleFormat: "bare",
-				Lowercase:  true,
+				ClaimName: "groups",
 			},
-			expected: []string{"frigate_admin", "viewer"},
-		},
-		{
-			name: "ZITADEL project-specific role claim with filter",
-			req: &model.ActionRequest{
-				Claims: map[string]any{
-					"urn:zitadel:iam:org:project:proj-123:roles": map[string]any{
-						"admin": map[string]any{"org1": "My Org"},
-					},
-					"urn:zitadel:iam:org:project:proj-456:roles": map[string]any{
-						"other_role": map[string]any{"org1": "My Org"},
-					},
-				},
-			},
-			opts: model.FlattenOptions{
-				ClaimName:       "groups",
-				RoleFormat:      "bare",
-				Lowercase:       true,
-				ProjectIDFilter: "proj-123",
-			},
-			expected: []string{"admin"},
-		},
-		{
-			name: "Actions V1 grants array",
-			req: &model.ActionRequest{
-				Grants: []model.UserGrant{
-					{
-						ProjectID: "p1",
-						Roles:     []string{"v1-role"},
-					},
-				},
-			},
-			opts: model.FlattenOptions{
-				ClaimName:  "groups",
-				RoleFormat: "bare",
-				Lowercase:  true,
-			},
-			expected: []string{"v1-role"},
+			expected: []string{},
 		},
 		{
 			name: "Nil request returns empty groups",

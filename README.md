@@ -8,9 +8,9 @@ The initial goal of this service is to **flatten ZITADEL project roles into a cl
 
 ## Features
 
-- **Actions V2 Ready**: Implements ZITADEL Actions V2 `restCall` webhook target contract (`append_claims`).
-- **Backward & Forward Compatible**: Parses roles from Actions V2 `user_grants`, Actions V1 `grants`, and nested `urn:zitadel:iam:org:project:roles` claims.
-- **HMAC Signature Security**: Validates incoming `Zitadel-Signature` headers using official `github.com/zitadel/zitadel-go/v3/pkg/actions` when `ZITADEL_SIGNING_KEY` is set.
+- **Actions V2 Native**: Directly implements ZITADEL Actions V2 `restCall` webhook target contract (`append_claims`).
+- **Clean Schema Support**: Strictly parses project roles from official ZITADEL Actions V2 `user_grants`.
+- **HMAC Signature Security**: Strictly enforces HMAC validation of incoming `Zitadel-Signature` headers using official `github.com/zitadel/zitadel-go/v3/pkg/actions` and mandatory `ZITADEL_SIGNING_KEY`.
 - **Configurable**: Customize claim name (default: `groups`), role formatting (`bare` or `prefixed`), lowercase normalization, and project-specific filtering.
 - **Ultra-Lightweight & Secure**: Multi-stage distroless scratch container (<20 MB), non-root execution (`UID 65532`), minimal memory footprint (<10 MB).
 - **Kubernetes-Native**: Includes liveness/readiness probes (`/healthz`, `/readyz`) and production K8s manifests.
@@ -85,7 +85,7 @@ All configuration can be provided via environment variables:
 | `ROLE_FORMAT` | `bare` | Default role format (`bare` or `prefixed`) |
 | `LOWERCASE_ROLES` | `true` | Convert extracted roles to lowercase |
 | `FILTER_PROJECT_ID`| `""` | Restrict extracted roles to this project ID |
-| `ZITADEL_SIGNING_KEY`| `""` | Signing key for validating `Zitadel-Signature` (disabled if empty) |
+| `ZITADEL_SIGNING_KEY`| *(required)* | Signing key for validating `Zitadel-Signature` (server will fail to start if not set) |
 
 ---
 

@@ -61,9 +61,10 @@ zitadel-actions-api/
 - The service uses an **Action Dispatcher** (`internal/service/dispatcher.go`) which inspects the request context and coordinates all applicable `ActionProcessor`s.
 
 ### 3.2 ZITADEL Actions V2 Compatibility
+- Strictly support the official ZITADEL Actions V2 schema (`user_grants`). Do not add alternative schemas or fallback formats.
 - ZITADEL expects webhook responses to return `append_claims: [{ key: "groups", value: ["..."] }]`.
-- Always maintain dual-compatibility: return `append_claims` **and** flat convenience keys (`groups`, `claims`) so direct API callers, testing utilities, and legacy V1 JavaScript scripts work out of the box.
-- Check both `Zitadel-Signature` and `X-Zitadel-Signature` headers for HMAC verification when `ZITADEL_SIGNING_KEY` is configured.
+- Maintain dual-compatibility in responses: return `append_claims` **and** flat convenience keys (`groups`, `claims`) so direct API callers and testing utilities work out of the box.
+- HMAC verification is mandatory: `ZITADEL_SIGNING_KEY` must always be provided, and validates against `Zitadel-Signature` / `X-Zitadel-Signature`.
 
 ### 3.3 Adding New Action Handlers (Processors)
 To add a new capability (e.g. metadata enrichment, user validation, external sync):

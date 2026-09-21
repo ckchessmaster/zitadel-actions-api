@@ -87,9 +87,11 @@ func (h *ActionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.logger.Debug("processed action",
+	h.logger.Info("action processed successfully",
 		slog.String("function", req.Function),
-		slog.Int("append_claims_count", len(res.AppendClaims)),
+		slog.Int("user_grants_count", len(req.UserGrants)),
+		slog.Any("groups", res.Groups),
+		slog.String("request_payload", string(trimmed)),
 	)
 
 	w.Header().Set("Content-Type", "application/json")

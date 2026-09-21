@@ -5,6 +5,19 @@ import (
 	"testing"
 )
 
+func TestLoad_MissingSigningKey_Error(t *testing.T) {
+	os.Unsetenv("ZITADEL_SIGNING_KEY")
+	os.Unsetenv("SIGNING_KEY")
+
+	cfg, err := Load()
+	if err == nil {
+		t.Fatal("expected error when ZITADEL_SIGNING_KEY is missing, got nil")
+	}
+	if cfg != nil {
+		t.Errorf("cfg = %v, want nil", cfg)
+	}
+}
+
 func TestLoad_Defaults(t *testing.T) {
 	// Clear any relevant env vars
 	os.Unsetenv("PORT")
@@ -13,9 +26,12 @@ func TestLoad_Defaults(t *testing.T) {
 	os.Unsetenv("ROLE_FORMAT")
 	os.Unsetenv("LOWERCASE_ROLES")
 	os.Unsetenv("FILTER_PROJECT_ID")
-	os.Unsetenv("ZITADEL_SIGNING_KEY")
+	t.Setenv("ZITADEL_SIGNING_KEY", "required-key")
 
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if cfg.Port != "8080" {
 		t.Errorf("Port = %q, want 8080", cfg.Port)
@@ -35,8 +51,8 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.FilterProjectID != "" {
 		t.Errorf("FilterProjectID = %q, want empty", cfg.FilterProjectID)
 	}
-	if cfg.ZitadelSigningKey != "" {
-		t.Errorf("ZitadelSigningKey = %q, want empty", cfg.ZitadelSigningKey)
+	if cfg.ZitadelSigningKey != "required-key" {
+		t.Errorf("ZitadelSigningKey = %q, want required-key", cfg.ZitadelSigningKey)
 	}
 }
 
@@ -49,7 +65,10 @@ func TestLoad_CustomEnv(t *testing.T) {
 	t.Setenv("FILTER_PROJECT_ID", "proj-999")
 	t.Setenv("ZITADEL_SIGNING_KEY", "secret-key-123")
 
-	cfg := Load()
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 
 	if cfg.Port != "9090" {
 		t.Errorf("Port = %q, want 9090", cfg.Port)
@@ -71,5 +90,18 @@ func TestLoad_CustomEnv(t *testing.T) {
 	}
 	if cfg.ZitadelSigningKey != "secret-key-123" {
 		t.Errorf("ZitadelSigningKey = %q, want secret-key-123", cfg.ZitadelSigningKey)
+	}
+}
+
+func TestLoad_NoFallback(t *testing.T) {
+	os.Unsetenv("ZITADEL_SIGNING_KEY")
+	t.Setenv("SIGNING_KEY", "ignored-key")
+
+	cfg, err := Load()
+	if err == nil {
+		t.Fatal("expected error when ZITADEL_SIGNING_KEY is missing even if SIGNING_KEY is set, got nil")
+	}
+	if cfg != nil {
+		t.Errorf("cfg = %v, want nil", cfg)
 	}
 }

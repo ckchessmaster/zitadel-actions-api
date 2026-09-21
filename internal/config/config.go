@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 	"strconv"
 	"strings"
@@ -27,12 +28,18 @@ type Config struct {
 	FilterProjectID string
 
 	// ZitadelSigningKey is the secret signing key issued by ZITADEL for the Action Target.
-	// If non-empty, incoming webhooks must include a valid HMAC signature in the Zitadel-Signature header.
+	// This is strictly required for HMAC signature verification.
 	ZitadelSigningKey string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
-func Load() *Config {
+// It returns an error if the mandatory ZITADEL_SIGNING_KEY is missing or empty.
+func Load() (*Config, error) {
+	key := getEnvOrDefault("ZITADEL_SIGNING_KEY", "")
+	if key == "" {
+		return nil, errors.New("ZITADEL_SIGNING_KEY is required but not set")
+	}
+
 	return &Config{
 		Port:              getEnvOrDefault("PORT", "8080"),
 		LogLevel:          strings.ToLower(getEnvOrDefault("LOG_LEVEL", "info")),
@@ -40,8 +47,8 @@ func Load() *Config {
 		RoleFormat:        strings.ToLower(getEnvOrDefault("ROLE_FORMAT", "bare")),
 		LowercaseRoles:    getEnvAsBoolOrDefault("LOWERCASE_ROLES", true),
 		FilterProjectID:   getEnvOrDefault("FILTER_PROJECT_ID", ""),
-		ZitadelSigningKey: getEnvOrDefault("ZITADEL_SIGNING_KEY", ""),
-	}
+		ZitadelSigningKey: key,
+	}, nil
 }
 
 func getEnvOrDefault(key, defaultVal string) string {

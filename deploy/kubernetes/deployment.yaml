@@ -3,6 +3,7 @@ kind: Deployment
 metadata:
   name: zitadel-actions-api
   labels:
+    app: zitadel-actions-api
     app.kubernetes.io/name: zitadel-actions-api
     app.kubernetes.io/part-of: zitadel
 spec:
@@ -18,6 +19,7 @@ spec:
   template:
     metadata:
       labels:
+        app: zitadel-actions-api
         app.kubernetes.io/name: zitadel-actions-api
     spec:
       securityContext:
@@ -38,7 +40,7 @@ spec:
                 name: zitadel-actions-api-config
             - secretRef:
                 name: zitadel-actions-api-secret
-                optional: true
+                optional: false
           resources:
             requests:
               cpu: 10m

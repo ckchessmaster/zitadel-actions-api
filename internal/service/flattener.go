@@ -14,7 +14,7 @@ type Flattener interface {
 	FlattenRoles(req *model.ActionRequest, opts model.FlattenOptions) *model.ActionResponse
 }
 
-// RoleFlattener implements Flattener and ActionProcessor.
+// RoleFlattener implements Flattener and ActionProcessor for ZITADEL Actions V2.
 type RoleFlattener struct{}
 
 // NewRoleFlattener creates a new RoleFlattener service.
@@ -36,14 +36,11 @@ func (f *RoleFlattener) ShouldProcess(req *model.ActionRequest) bool {
 	if fn == "preaccesstoken" || fn == "preuserinfo" {
 		return true
 	}
-	if len(req.UserGrants) > 0 || len(req.Grants) > 0 || len(req.Claims) > 0 {
+	if len(req.UserGrants) > 0 {
 		return true
 	}
 	// Default to true for complement token webhook calls
-	if req.FullMethod == "" {
-		return true
-	}
-	return false
+	return req.Function == ""
 }
 
 // Process implements ActionProcessor.
@@ -62,19 +59,8 @@ func (f *RoleFlattener) FlattenRoles(req *model.ActionRequest, opts model.Flatte
 	rawRoles := make(map[string]struct{})
 
 	if req != nil {
-		// 1. Process user_grants (Actions V2 primary field)
 		for _, grant := range req.UserGrants {
 			f.processGrant(grant, opts, rawRoles)
-		}
-
-		// 2. Process grants (Actions V1 / custom script field)
-		for _, grant := range req.Grants {
-			f.processGrant(grant, opts, rawRoles)
-		}
-
-		// 3. Process claims map if roles are embedded directly in claims
-		if req.Claims != nil {
-			f.processClaims(req.Claims, opts, rawRoles)
 		}
 	}
 
@@ -109,67 +95,6 @@ func (f *RoleFlattener) processGrant(grant model.UserGrant, opts model.FlattenOp
 		formatted := f.formatRole(role, grant.ProjectID, opts)
 		if formatted != "" {
 			result[formatted] = struct{}{}
-		}
-	}
-}
-
-func (f *RoleFlattener) processClaims(claims map[string]any, opts model.FlattenOptions, result map[string]struct{}) {
-	for k, v := range claims {
-		// Check for Zitadel role claims:
-		// - "urn:zitadel:iam:org:project:roles"
-		// - "urn:zitadel:iam:org:project:<project_id>:roles"
-		// - "roles"
-		var projectID string
-		isZitadelRoleClaim := false
-
-		if k == "roles" {
-			isZitadelRoleClaim = true
-		} else if strings.HasPrefix(k, "urn:zitadel:iam:org:project:") && strings.HasSuffix(k, ":roles") {
-			isZitadelRoleClaim = true
-			parts := strings.Split(k, ":")
-			// urn:zitadel:iam:org:project:<project_id>:roles has 7 parts
-			if len(parts) == 7 {
-				projectID = parts[5]
-			}
-		} else if k == "urn:zitadel:iam:org:project:roles" {
-			isZitadelRoleClaim = true
-		}
-
-		if !isZitadelRoleClaim {
-			continue
-		}
-
-		if opts.ProjectIDFilter != "" && projectID != "" && projectID != opts.ProjectIDFilter {
-			continue
-		}
-
-		// ZITADEL roles claim can be a map where keys are role names:
-		// { "admin": { "org123": "My Org" }, "viewer": { ... } }
-		// or a slice of strings: ["admin", "viewer"]
-		switch typedVal := v.(type) {
-		case map[string]any:
-			for roleName := range typedVal {
-				formatted := f.formatRole(roleName, projectID, opts)
-				if formatted != "" {
-					result[formatted] = struct{}{}
-				}
-			}
-		case []any:
-			for _, item := range typedVal {
-				if strRole, ok := item.(string); ok {
-					formatted := f.formatRole(strRole, projectID, opts)
-					if formatted != "" {
-						result[formatted] = struct{}{}
-					}
-				}
-			}
-		case []string:
-			for _, strRole := range typedVal {
-				formatted := f.formatRole(strRole, projectID, opts)
-				if formatted != "" {
-					result[formatted] = struct{}{}
-				}
-			}
 		}
 	}
 }

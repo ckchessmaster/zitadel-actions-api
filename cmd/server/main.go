@@ -18,7 +18,11 @@ import (
 )
 
 func main() {
-	cfg := config.Load()
+	cfg, err := config.Load()
+	if err != nil {
+		slog.Error("failed to load configuration", slog.Any("error", err))
+		os.Exit(1)
+	}
 
 	// Initialize structured logger
 	var logLevel slog.Level
@@ -45,7 +49,7 @@ func main() {
 		slog.String("role_format", cfg.RoleFormat),
 		slog.Bool("lowercase_roles", cfg.LowercaseRoles),
 		slog.String("filter_project_id", cfg.FilterProjectID),
-		slog.Bool("signature_verification", cfg.ZitadelSigningKey != ""),
+		slog.Bool("signature_verification", true),
 	)
 
 	// Initialize dispatcher and action processors

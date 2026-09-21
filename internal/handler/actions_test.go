@@ -161,3 +161,41 @@ func TestActionsHandler_MethodNotAllowed(t *testing.T) {
 		t.Errorf("status = %d, want 405", rec.Code)
 	}
 }
+
+func TestActionsHandler_MultipleGrants(t *testing.T) {
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	cfg := &config.Config{
+		ClaimName:      "groups",
+		RoleFormat:     "bare",
+		LowercaseRoles: true,
+	}
+	dispatcher := service.NewDispatcher(service.NewRoleFlattener())
+	h := NewActionsHandler(dispatcher, cfg, logger)
+
+	payload := `{
+		"function": "preaccesstoken",
+		"user_grants": [
+			{"projectId": "frigate", "roles": ["ADMIN", "viewer"]},
+			{"projectId": "home-assistant", "roles": ["editor"]}
+		]
+	}`
+
+	req := httptest.NewRequest(http.MethodPost, "/actions", bytes.NewBufferString(payload))
+	rec := httptest.NewRecorder()
+
+	h.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+
+	var resp model.ActionResponse
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("failed to decode response: %v", err)
+	}
+
+	expectedGroups := []string{"admin", "editor", "viewer"}
+	if !reflect.DeepEqual(resp.Groups, expectedGroups) {
+		t.Errorf("resp.Groups = %v, want %v", resp.Groups, expectedGroups)
+	}
+}

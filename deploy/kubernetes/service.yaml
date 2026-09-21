@@ -3,6 +3,7 @@ kind: Service
 metadata:
   name: zitadel-actions-api
   labels:
+    app: zitadel-actions-api
     app.kubernetes.io/name: zitadel-actions-api
     app.kubernetes.io/part-of: zitadel
 spec:
@@ -13,4 +14,4 @@ spec:
       targetPort: http
       protocol: TCP
   selector:
-    app.kubernetes.io/name: zitadel-actions-api
+    app: zitadel-actions-api

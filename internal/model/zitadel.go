@@ -1,26 +1,28 @@
 package model
 
-// ActionRequest represents the incoming webhook payload sent by ZITADEL.
-// It is designed to handle both ZITADEL Actions V2 target payloads
-// and Actions V1 / custom script payloads.
+// ActionRequest represents the incoming webhook payload sent by ZITADEL Actions V2.
 type ActionRequest struct {
-	Function   string         `json:"function,omitempty"`
-	InstanceID string         `json:"instanceID,omitempty"`
-	OrgID      string         `json:"orgID,omitempty"`
-	UserID     string         `json:"userID,omitempty"`
-	FullMethod string         `json:"fullMethod,omitempty"`
-	UserGrants []UserGrant    `json:"user_grants,omitempty"`
-	Grants     []UserGrant    `json:"grants,omitempty"`
-	Claims     map[string]any `json:"claims,omitempty"`
-	Request    map[string]any `json:"request,omitempty"`
-	Response   map[string]any `json:"response,omitempty"`
+	Function   string      `json:"function,omitempty"`
+	InstanceID string      `json:"instanceID,omitempty"`
+	OrgID      string      `json:"orgID,omitempty"`
+	UserID     string      `json:"userID,omitempty"`
+	UserGrants []UserGrant `json:"user_grants,omitempty"`
+	User       *UserInfo   `json:"user,omitempty"`
+}
+
+// UserInfo represents the user details provided in ZITADEL's payload.
+type UserInfo struct {
+	ID                 string `json:"id,omitempty"`
+	Username           string `json:"username,omitempty"`
+	PreferredLoginName string `json:"preferred_login_name,omitempty"`
 }
 
 // UserGrant represents a grant of roles for a specific project.
 type UserGrant struct {
-	ProjectID              string   `json:"projectId"`
-	Roles                  []string `json:"roles"`
-	UserGrantResourceOwner string   `json:"userGrantResourceOwner,omitempty"`
+	ProjectID                  string   `json:"projectId"`
+	Roles                      []string `json:"roles"`
+	UserGrantResourceOwner     string   `json:"userGrantResourceOwner,omitempty"`
+	UserGrantResourceOwnerName string   `json:"userGrantResourceOwnerName,omitempty"`
 }
 
 // ClaimItem represents a single key-value claim entry for ZITADEL's append_claims response.
