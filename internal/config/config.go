@@ -30,6 +30,14 @@ type Config struct {
 	// ZitadelSigningKey is the secret signing key issued by ZITADEL for the Action Target.
 	// This is strictly required for HMAC signature verification.
 	ZitadelSigningKey string
+
+	// ZitadelAPIURL is the base URL of the ZITADEL instance (e.g. "https://kingdon.auth.chriskingdon.com").
+	// Optional: Used to lookup user grants when missing in the webhook payload.
+	ZitadelAPIURL string
+
+	// ZitadelAPIToken is a Service User Personal Access Token (PAT).
+	// Optional: Used alongside ZitadelAPIURL to query ZITADEL's Management API.
+	ZitadelAPIToken string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -48,6 +56,8 @@ func Load() (*Config, error) {
 		LowercaseRoles:    getEnvAsBoolOrDefault("LOWERCASE_ROLES", true),
 		FilterProjectID:   getEnvOrDefault("FILTER_PROJECT_ID", ""),
 		ZitadelSigningKey: key,
+		ZitadelAPIURL:     strings.TrimRight(getEnvOrDefault("ZITADEL_API_URL", ""), "/"),
+		ZitadelAPIToken:   getEnvOrDefault("ZITADEL_API_TOKEN", ""),
 	}, nil
 }
 

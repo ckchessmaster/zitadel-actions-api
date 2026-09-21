@@ -15,18 +15,38 @@ From the repository root:
 kubectl apply -k deploy/kubernetes/
 ```
 
-### Step 1.2: (Optional) Configure ZITADEL Signing Key
+### Step 1.2: Configure Secrets and API URL
 
-If you want ZITADEL to verify request integrity using an HMAC signature:
+#### A. ZITADEL Signing Key (Required for HMAC Verification)
+When creating a ZITADEL Target, ZITADEL generates a `signingKey`. This key is used to compute and verify the `Zitadel-Signature` HMAC header on every webhook request.
 
-1. Copy `deploy/kubernetes/secret.example.yaml` to `secret.yaml`.
-2. Add the `signingKey` provided when creating the ZITADEL Target.
-3. Apply the secret:
+#### B. Service User Personal Access Token (Recommended for `preuserinfo`)
+In ZITADEL Actions V2, `user_grants` are included in `preaccesstoken` payloads, but **omitted** by ZITADEL in `preuserinfo` payloads. If your application or proxy (like `oauth2-proxy`) queries `/userinfo`, `zitadel-actions-api` needs to query ZITADEL's Management API to fetch the user's project roles dynamically.
+
+To configure this:
+1. In ZITADEL Console, create a Service User under **Users -> Service Users -> New** (e.g. `actions-api-service-user`).
+2. Assign the Service User the **Org Viewer** role (or Org Project Permission Editor) so it can view user grants.
+3. Under the Service User's **Personal Access Tokens**, create a new token (PAT) and copy it.
+4. Set `ZITADEL_API_URL` in `deploy/kubernetes/configmap.yaml` (e.g., `https://auth.example.com` or internal URL `http://zitadel:8080`).
+5. Copy `deploy/kubernetes/secret.example.yaml` to `secret.yaml` and provide both keys:
+   ```yaml
+   apiVersion: v1
+   kind: Secret
+   metadata:
+     name: zitadel-actions-api-secret
+     namespace: zitadel
+   type: Opaque
+   stringData:
+     ZITADEL_SIGNING_KEY: "<your-target-signing-key>"
+     ZITADEL_API_TOKEN: "<your-service-user-pat>"
+   ```
+6. Apply the secret:
    ```bash
    kubectl apply -f deploy/kubernetes/secret.yaml
    ```
 
 ### Step 1.3: Verify Deployment
+
 
 ```bash
 kubectl get pods -l app.kubernetes.io/name=zitadel-actions-api

@@ -91,6 +91,8 @@ func (h *ActionsHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		slog.String("function", req.Function),
 		slog.Int("user_grants_count", len(req.UserGrants)),
 		slog.Any("groups", res.Groups),
+	)
+	h.logger.Debug("action request payload",
 		slog.String("request_payload", string(trimmed)),
 	)
 

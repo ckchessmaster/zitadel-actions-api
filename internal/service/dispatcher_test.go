@@ -95,3 +95,29 @@ func TestDispatcher_Dispatch(t *testing.T) {
 		t.Errorf("claims[skipped] should not be present")
 	}
 }
+
+func TestDispatcher_Dispatch_EmptyGrants(t *testing.T) {
+	dispatcher := NewDispatcher(NewRoleFlattener())
+
+	req := &model.ActionRequest{
+		Function:   "preuserinfo",
+		UserGrants: []model.UserGrant{},
+	}
+
+	opts := model.FlattenOptions{
+		ClaimName:  "groups",
+		RoleFormat: "bare",
+	}
+
+	res, err := dispatcher.Dispatch(context.Background(), req, opts)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if res.Groups == nil {
+		t.Errorf("res.Groups is nil, want empty slice []")
+	}
+	if len(res.Groups) != 0 {
+		t.Errorf("len(res.Groups) = %d, want 0", len(res.Groups))
+	}
+}

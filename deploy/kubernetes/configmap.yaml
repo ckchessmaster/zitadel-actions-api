@@ -12,3 +12,5 @@ data:
   ROLE_FORMAT: "bare"
   LOWERCASE_ROLES: "true"
   FILTER_PROJECT_ID: ""
+  # Base URL of your ZITADEL instance (e.g. "https://kingdon.auth.chriskingdon.com" or in-cluster "http://zitadel:8080")
+  ZITADEL_API_URL: ""

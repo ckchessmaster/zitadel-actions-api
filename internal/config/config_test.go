@@ -54,6 +54,12 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.ZitadelSigningKey != "required-key" {
 		t.Errorf("ZitadelSigningKey = %q, want required-key", cfg.ZitadelSigningKey)
 	}
+	if cfg.ZitadelAPIURL != "" {
+		t.Errorf("ZitadelAPIURL = %q, want empty", cfg.ZitadelAPIURL)
+	}
+	if cfg.ZitadelAPIToken != "" {
+		t.Errorf("ZitadelAPIToken = %q, want empty", cfg.ZitadelAPIToken)
+	}
 }
 
 func TestLoad_CustomEnv(t *testing.T) {
@@ -64,6 +70,8 @@ func TestLoad_CustomEnv(t *testing.T) {
 	t.Setenv("LOWERCASE_ROLES", "false")
 	t.Setenv("FILTER_PROJECT_ID", "proj-999")
 	t.Setenv("ZITADEL_SIGNING_KEY", "secret-key-123")
+	t.Setenv("ZITADEL_API_URL", "https://zitadel.example.com/")
+	t.Setenv("ZITADEL_API_TOKEN", "pat-token-456")
 
 	cfg, err := Load()
 	if err != nil {
@@ -90,6 +98,12 @@ func TestLoad_CustomEnv(t *testing.T) {
 	}
 	if cfg.ZitadelSigningKey != "secret-key-123" {
 		t.Errorf("ZitadelSigningKey = %q, want secret-key-123", cfg.ZitadelSigningKey)
+	}
+	if cfg.ZitadelAPIURL != "https://zitadel.example.com" {
+		t.Errorf("ZitadelAPIURL = %q, want https://zitadel.example.com (trailing slash trimmed)", cfg.ZitadelAPIURL)
+	}
+	if cfg.ZitadelAPIToken != "pat-token-456" {
+		t.Errorf("ZitadelAPIToken = %q, want pat-token-456", cfg.ZitadelAPIToken)
 	}
 }
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -144,5 +145,95 @@ func TestRoleFlattener_FlattenRoles(t *testing.T) {
 				t.Errorf("res.Claims[%s] = %v, want %v", expectedClaimName, res.Claims[expectedClaimName], tt.expected)
 			}
 		})
+	}
+}
+
+type mockGrantFetcher struct {
+	calledUserID string
+	grants       []model.UserGrant
+	err          error
+}
+
+func (m *mockGrantFetcher) FetchUserGrants(ctx context.Context, userID string) ([]model.UserGrant, error) {
+	m.calledUserID = userID
+	return m.grants, m.err
+}
+
+func TestRoleFlattener_FlattenRoles_WithFetcher(t *testing.T) {
+	mockFetcher := &mockGrantFetcher{
+		grants: []model.UserGrant{
+			{
+				ProjectID: "frigate",
+				Roles:     []string{"frigate-admin", "viewer"},
+			},
+		},
+	}
+
+	flattener := NewRoleFlattener(mockFetcher)
+
+	// Case 1: Empty UserGrants, user ID in req.User.ID (like preuserinfo)
+	req := &model.ActionRequest{
+		Function:   "preuserinfo",
+		UserGrants: []model.UserGrant{},
+		User: &model.UserInfo{
+			ID: "user-391212",
+		},
+	}
+
+	opts := model.FlattenOptions{
+		ClaimName:  "groups",
+		RoleFormat: "bare",
+		Lowercase:  true,
+	}
+
+	res := flattener.FlattenRoles(req, opts)
+
+	if mockFetcher.calledUserID != "user-391212" {
+		t.Errorf("calledUserID = %q, want user-391212", mockFetcher.calledUserID)
+	}
+
+	expectedGroups := []string{"frigate-admin", "viewer"}
+	if !reflect.DeepEqual(res.Groups, expectedGroups) {
+		t.Errorf("res.Groups = %v, want %v", res.Groups, expectedGroups)
+	}
+
+	// Case 2: UserGrants already populated - fetcher should NOT be called
+	mockFetcher.calledUserID = ""
+	reqWithGrants := &model.ActionRequest{
+		UserGrants: []model.UserGrant{
+			{
+				ProjectID: "proj-1",
+				Roles:     []string{"editor"},
+			},
+		},
+		User: &model.UserInfo{
+			ID: "user-391212",
+		},
+	}
+
+	res2 := flattener.FlattenRoles(reqWithGrants, opts)
+	if mockFetcher.calledUserID != "" {
+		t.Errorf("fetcher should not be called when UserGrants is already populated")
+	}
+	if !reflect.DeepEqual(res2.Groups, []string{"editor"}) {
+		t.Errorf("res2.Groups = %v, want [editor]", res2.Groups)
+	}
+
+	// Case 3: Empty UserGrants, user ID in req.UserInfo.Sub
+	mockFetcher.calledUserID = ""
+	reqWithSub := &model.ActionRequest{
+		Function:   "preuserinfo",
+		UserGrants: []model.UserGrant{},
+		UserInfo: &model.UserClaims{
+			Sub: "sub-999",
+		},
+	}
+
+	res3 := flattener.FlattenRoles(reqWithSub, opts)
+	if mockFetcher.calledUserID != "sub-999" {
+		t.Errorf("calledUserID = %q, want sub-999", mockFetcher.calledUserID)
+	}
+	if !reflect.DeepEqual(res3.Groups, expectedGroups) {
+		t.Errorf("res3.Groups = %v, want %v", res3.Groups, expectedGroups)
 	}
 }

@@ -11,6 +11,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/ckchessmaster/zitadel-actions-api/internal/client"
 	"github.com/ckchessmaster/zitadel-actions-api/internal/config"
 	"github.com/ckchessmaster/zitadel-actions-api/internal/handler"
 	"github.com/ckchessmaster/zitadel-actions-api/internal/middleware"
@@ -42,6 +43,7 @@ func main() {
 	}))
 	slog.SetDefault(logger)
 
+	apiLookupEnabled := cfg.ZitadelAPIURL != "" && cfg.ZitadelAPIToken != ""
 	logger.Info("starting zitadel-actions-api",
 		slog.String("port", cfg.Port),
 		slog.String("log_level", cfg.LogLevel),
@@ -50,10 +52,19 @@ func main() {
 		slog.Bool("lowercase_roles", cfg.LowercaseRoles),
 		slog.String("filter_project_id", cfg.FilterProjectID),
 		slog.Bool("signature_verification", true),
+		slog.Bool("api_lookup_enabled", apiLookupEnabled),
 	)
 
 	// Initialize dispatcher and action processors
-	flattenerService := service.NewRoleFlattener()
+	var grantFetcher client.GrantFetcher
+	if apiLookupEnabled {
+		grantFetcher = client.New(cfg.ZitadelAPIURL, cfg.ZitadelAPIToken, nil)
+		logger.Info("configured ZITADEL API client for user grant lookup",
+			slog.String("api_url", cfg.ZitadelAPIURL),
+		)
+	}
+
+	flattenerService := service.NewRoleFlattener(grantFetcher)
 	actionDispatcher := service.NewDispatcher(flattenerService)
 	unifiedActionHandler := handler.NewActionsHandler(actionDispatcher, cfg, logger)
 

@@ -5,7 +5,5 @@ resources:
   - configmap.yaml
   - deployment.yaml
   - service.yaml
-
-# Uncomment if you have populated secret.yaml
-# resources:
-#   - secret.yaml
+  # Uncomment after creating secret.yaml from secret.example.yaml:
+  # - secret.yaml

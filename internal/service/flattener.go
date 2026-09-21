@@ -5,6 +5,7 @@ import (
 	"sort"
 	"strings"
 
+	"github.com/ckchessmaster/zitadel-actions-api/internal/client"
 	"github.com/ckchessmaster/zitadel-actions-api/internal/model"
 )
 
@@ -15,11 +16,19 @@ type Flattener interface {
 }
 
 // RoleFlattener implements Flattener and ActionProcessor for ZITADEL Actions V2.
-type RoleFlattener struct{}
+type RoleFlattener struct {
+	fetcher client.GrantFetcher
+}
 
-// NewRoleFlattener creates a new RoleFlattener service.
-func NewRoleFlattener() *RoleFlattener {
-	return &RoleFlattener{}
+// NewRoleFlattener creates a new RoleFlattener service with an optional GrantFetcher.
+func NewRoleFlattener(fetchers ...client.GrantFetcher) *RoleFlattener {
+	var f client.GrantFetcher
+	if len(fetchers) > 0 {
+		f = fetchers[0]
+	}
+	return &RoleFlattener{
+		fetcher: f,
+	}
 }
 
 // Name returns the identifier of this action processor.
@@ -45,12 +54,17 @@ func (f *RoleFlattener) ShouldProcess(req *model.ActionRequest) bool {
 
 // Process implements ActionProcessor.
 func (f *RoleFlattener) Process(ctx context.Context, req *model.ActionRequest, opts model.FlattenOptions) (*model.ActionResponse, error) {
-	return f.FlattenRoles(req, opts), nil
+	return f.FlattenRolesWithContext(ctx, req, opts), nil
 }
 
 // FlattenRoles extracts roles from the request, filters, normalizes, deduplicates,
 // and returns an ActionResponse formatted for both ZITADEL Actions V2 and direct consumers.
 func (f *RoleFlattener) FlattenRoles(req *model.ActionRequest, opts model.FlattenOptions) *model.ActionResponse {
+	return f.FlattenRolesWithContext(context.Background(), req, opts)
+}
+
+// FlattenRolesWithContext extracts roles, querying the ZITADEL API if grants are missing in the request.
+func (f *RoleFlattener) FlattenRolesWithContext(ctx context.Context, req *model.ActionRequest, opts model.FlattenOptions) *model.ActionResponse {
 	claimName := opts.ClaimName
 	if claimName == "" {
 		claimName = "groups"
@@ -59,6 +73,22 @@ func (f *RoleFlattener) FlattenRoles(req *model.ActionRequest, opts model.Flatte
 	rawRoles := make(map[string]struct{})
 
 	if req != nil {
+		// If UserGrants is empty and a GrantFetcher is configured, query ZITADEL directly
+		if len(req.UserGrants) == 0 && f.fetcher != nil {
+			userID := req.UserID
+			if userID == "" && req.User != nil {
+				userID = req.User.ID
+			}
+			if userID == "" && req.UserInfo != nil {
+				userID = req.UserInfo.Sub
+			}
+			if userID != "" {
+				if grants, err := f.fetcher.FetchUserGrants(ctx, userID); err == nil && len(grants) > 0 {
+					req.UserGrants = grants
+				}
+			}
+		}
+
 		for _, grant := range req.UserGrants {
 			f.processGrant(grant, opts, rawRoles)
 		}

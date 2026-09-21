@@ -2,6 +2,7 @@
 
 IMAGE_NAME ?= ghcr.io/ckchessmaster/zitadel-actions-api:local
 PORT ?= 8080
+ZITADEL_SIGNING_KEY ?= dev-local-signing-key
 
 all: test build
 
@@ -9,7 +10,7 @@ build:
 	CGO_ENABLED=0 go build -v -ldflags="-s -w" -o bin/zitadel-actions-api ./cmd/server
 
 run:
-	PORT=$(PORT) LOG_LEVEL=debug go run ./cmd/server
+	PORT=$(PORT) LOG_LEVEL=debug ZITADEL_SIGNING_KEY=$(ZITADEL_SIGNING_KEY) go run ./cmd/server
 
 test:
 	go test -v ./...
@@ -25,7 +26,7 @@ docker-build:
 	docker build -t $(IMAGE_NAME) .
 
 docker-run:
-	docker run --rm -p $(PORT):8080 $(IMAGE_NAME)
+	docker run --rm -p $(PORT):8080 -e ZITADEL_SIGNING_KEY=$(ZITADEL_SIGNING_KEY) $(IMAGE_NAME)
 
 clean:
 	rm -rf bin/

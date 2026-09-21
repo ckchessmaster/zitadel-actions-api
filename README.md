@@ -10,6 +10,7 @@ The initial goal of this service is to **flatten ZITADEL project roles into a cl
 
 - **Actions V2 Native**: Directly implements ZITADEL Actions V2 `restCall` webhook target contract (`append_claims`).
 - **Clean Schema Support**: Strictly parses project roles from official ZITADEL Actions V2 `user_grants`.
+- **Dynamic Grant Fallback**: Queries ZITADEL's Management API with a Service User Personal Access Token (PAT) when user grants are omitted by ZITADEL (such as in `preuserinfo` actions).
 - **HMAC Signature Security**: Strictly enforces HMAC validation of incoming `Zitadel-Signature` headers using official `github.com/zitadel/zitadel-go/v3/pkg/actions` and mandatory `ZITADEL_SIGNING_KEY`.
 - **Configurable**: Customize claim name (default: `groups`), role formatting (`bare` or `prefixed`), lowercase normalization, and project-specific filtering.
 - **Ultra-Lightweight & Secure**: Multi-stage distroless scratch container (<20 MB), non-root execution (`UID 65532`), minimal memory footprint (<10 MB).
@@ -19,6 +20,7 @@ The initial goal of this service is to **flatten ZITADEL project roles into a cl
 ---
 
 ## API Endpoints
+
 
 ### 1. `POST /actions` *(Primary Unified Target Endpoint)*
 
@@ -86,6 +88,8 @@ All configuration can be provided via environment variables:
 | `LOWERCASE_ROLES` | `true` | Convert extracted roles to lowercase |
 | `FILTER_PROJECT_ID`| `""` | Restrict extracted roles to this project ID |
 | `ZITADEL_SIGNING_KEY`| *(required)* | Signing key for validating `Zitadel-Signature` (server will fail to start if not set) |
+| `ZITADEL_API_URL` | `""` | Optional base URL of ZITADEL instance (e.g. `https://auth.example.com` or `http://zitadel:8080`) |
+| `ZITADEL_API_TOKEN` | `""` | Optional Service User Personal Access Token (PAT) for querying user grants |
 
 ---
 

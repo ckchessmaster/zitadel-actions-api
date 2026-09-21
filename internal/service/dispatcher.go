@@ -42,6 +42,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, req *model.ActionRequest, opt
 	merged := &model.ActionResponse{
 		AppendClaims:    make([]model.ClaimItem, 0),
 		AppendLogClaims: make([]string, 0),
+		Groups:          make([]string, 0),
 		Claims:          make(map[string]any),
 	}
 
@@ -64,7 +65,7 @@ func (d *Dispatcher) Dispatch(ctx context.Context, req *model.ActionRequest, opt
 
 		// Merge groups convenience field if present
 		if len(res.Groups) > 0 {
-			merged.Groups = res.Groups
+			merged.Groups = append(merged.Groups, res.Groups...)
 		}
 
 		// Merge claims map

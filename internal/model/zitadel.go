@@ -8,6 +8,12 @@ type ActionRequest struct {
 	UserID     string      `json:"userID,omitempty"`
 	UserGrants []UserGrant `json:"user_grants,omitempty"`
 	User       *UserInfo   `json:"user,omitempty"`
+	UserInfo   *UserClaims `json:"userinfo,omitempty"`
+}
+
+// UserClaims represents the userinfo claims provided in ZITADEL's payload (e.g. sub).
+type UserClaims struct {
+	Sub string `json:"sub,omitempty"`
 }
 
 // UserInfo represents the user details provided in ZITADEL's payload.
@@ -40,7 +46,7 @@ type ClaimItem struct {
 type ActionResponse struct {
 	AppendClaims    []ClaimItem    `json:"append_claims"`
 	AppendLogClaims []string       `json:"append_log_claims,omitempty"`
-	Groups          []string       `json:"groups,omitempty"`
+	Groups          []string       `json:"groups"`
 	Claims          map[string]any `json:"claims,omitempty"`
 }
 
