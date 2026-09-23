@@ -10,6 +10,7 @@ type ActionRequest struct {
 	User       *UserInfo   `json:"user,omitempty"`
 	UserInfo   *UserClaims `json:"userinfo,omitempty"`
 	Org        *OrgInfo    `json:"org,omitempty"`
+	Scopes     []string    `json:"scopes,omitempty"`
 }
 
 // OrgInfo represents the organization context provided in ZITADEL's payload.

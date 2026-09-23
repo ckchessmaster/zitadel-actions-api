@@ -51,6 +51,7 @@ func main() {
 		slog.String("role_format", cfg.RoleFormat),
 		slog.Bool("lowercase_roles", cfg.LowercaseRoles),
 		slog.String("filter_project_id", cfg.FilterProjectID),
+		slog.String("temporal_project_id", cfg.TemporalProjectID),
 		slog.Bool("signature_verification", true),
 		slog.Bool("api_lookup_enabled", apiLookupEnabled),
 	)
@@ -66,6 +67,16 @@ func main() {
 
 	flattenerService := service.NewRoleFlattener(grantFetcher)
 	actionDispatcher := service.NewDispatcher(flattenerService)
+
+	// Register Temporal permissions processor if configured
+	if cfg.TemporalProjectID != "" {
+		temporalProcessor := service.NewTemporalPermissionsProcessor(cfg.TemporalProjectID)
+		actionDispatcher.Register(temporalProcessor)
+		logger.Info("registered Temporal permissions processor",
+			slog.String("temporal_project_id", cfg.TemporalProjectID),
+		)
+	}
+
 	unifiedActionHandler := handler.NewActionsHandler(actionDispatcher, cfg, logger)
 
 	// Actions router with signature validation

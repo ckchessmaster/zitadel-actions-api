@@ -60,6 +60,9 @@ func TestLoad_Defaults(t *testing.T) {
 	if cfg.ZitadelAPIToken != "" {
 		t.Errorf("ZitadelAPIToken = %q, want empty", cfg.ZitadelAPIToken)
 	}
+	if cfg.TemporalProjectID != "" {
+		t.Errorf("TemporalProjectID = %q, want empty", cfg.TemporalProjectID)
+	}
 }
 
 func TestLoad_CustomEnv(t *testing.T) {
@@ -72,6 +75,7 @@ func TestLoad_CustomEnv(t *testing.T) {
 	t.Setenv("ZITADEL_SIGNING_KEY", "secret-key-123")
 	t.Setenv("ZITADEL_API_URL", "https://zitadel.example.com/")
 	t.Setenv("ZITADEL_API_TOKEN", "pat-token-456")
+	t.Setenv("TEMPORAL_PROJECT_ID", "temporal-proj-789")
 
 	cfg, err := Load()
 	if err != nil {
@@ -104,6 +108,9 @@ func TestLoad_CustomEnv(t *testing.T) {
 	}
 	if cfg.ZitadelAPIToken != "pat-token-456" {
 		t.Errorf("ZitadelAPIToken = %q, want pat-token-456", cfg.ZitadelAPIToken)
+	}
+	if cfg.TemporalProjectID != "temporal-proj-789" {
+		t.Errorf("TemporalProjectID = %q, want temporal-proj-789", cfg.TemporalProjectID)
 	}
 }
 

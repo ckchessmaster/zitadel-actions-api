@@ -2,6 +2,7 @@ package config
 
 import (
 	"errors"
+	"log/slog"
 	"os"
 	"strconv"
 	"strings"
@@ -38,6 +39,11 @@ type Config struct {
 	// ZitadelAPIToken is a Service User Personal Access Token (PAT).
 	// Optional: Used alongside ZitadelAPIURL to query ZITADEL's Management API.
 	ZitadelAPIToken string
+
+	// TemporalProjectID is the ZITADEL project ID for the Temporal application.
+	// When set, the Temporal permissions processor maps project roles to Temporal permission strings.
+	// Optional: If unset, the Temporal permissions processor is disabled.
+	TemporalProjectID string
 }
 
 // Load reads configuration from environment variables with sensible defaults.
@@ -46,6 +52,11 @@ func Load() (*Config, error) {
 	key := getEnvOrDefault("ZITADEL_SIGNING_KEY", "")
 	if key == "" {
 		return nil, errors.New("ZITADEL_SIGNING_KEY is required but not set")
+	}
+
+	temporalProjectID := getEnvOrDefault("TEMPORAL_PROJECT_ID", "")
+	if temporalProjectID == "" {
+		slog.Warn("TEMPORAL_PROJECT_ID is not set; Temporal permissions processor will be disabled")
 	}
 
 	return &Config{
@@ -58,6 +69,7 @@ func Load() (*Config, error) {
 		ZitadelSigningKey: key,
 		ZitadelAPIURL:     strings.TrimRight(getEnvOrDefault("ZITADEL_API_URL", ""), "/"),
 		ZitadelAPIToken:   getEnvOrDefault("ZITADEL_API_TOKEN", ""),
+		TemporalProjectID: temporalProjectID,
 	}, nil
 }
 
